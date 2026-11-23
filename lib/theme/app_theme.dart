@@ -115,7 +115,7 @@ ThemeData capiBankTheme() {
       ),
       contentPadding: const EdgeInsets.all(AppSpacing.s2),
     ),
-    dialogTheme: const DialogTheme(
+    dialogTheme: const DialogThemeData(
       backgroundColor: AppColors.paper,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.zero,

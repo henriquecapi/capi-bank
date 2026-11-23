@@ -115,15 +115,15 @@ class _DollarBillPainter extends CustomPainter {
     final groundY = 76.0;
     if (phase == 0) {
       // Perna esquerda a frente, direita atras.
-      canvas.drawLine(const Offset(48, hipY), const Offset(40, groundY), legPaint);
-      canvas.drawLine(const Offset(72, hipY), const Offset(82, groundY - 4), legPaint);
-      canvas.drawRect(const Rect.fromLTWH(34, groundY - 2, 10, 4), inkFill);
-      canvas.drawRect(const Rect.fromLTWH(80, groundY - 6, 10, 4), inkFill);
+      canvas.drawLine(Offset(48, hipY), Offset(40, groundY), legPaint);
+      canvas.drawLine(Offset(72, hipY), Offset(82, groundY - 4), legPaint);
+      canvas.drawRect(Rect.fromLTWH(34, groundY - 2, 10, 4), inkFill);
+      canvas.drawRect(Rect.fromLTWH(80, groundY - 6, 10, 4), inkFill);
     } else {
-      canvas.drawLine(const Offset(48, hipY), const Offset(38, groundY - 4), legPaint);
-      canvas.drawLine(const Offset(72, hipY), const Offset(80, groundY), legPaint);
-      canvas.drawRect(const Rect.fromLTWH(32, groundY - 6, 10, 4), inkFill);
-      canvas.drawRect(const Rect.fromLTWH(78, groundY - 2, 10, 4), inkFill);
+      canvas.drawLine(Offset(48, hipY), Offset(38, groundY - 4), legPaint);
+      canvas.drawLine(Offset(72, hipY), Offset(80, groundY), legPaint);
+      canvas.drawRect(Rect.fromLTWH(32, groundY - 6, 10, 4), inkFill);
+      canvas.drawRect(Rect.fromLTWH(78, groundY - 2, 10, 4), inkFill);
     }
 
     // --- Bracos (para tras, como correndo) ---

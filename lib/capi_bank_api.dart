@@ -4,7 +4,9 @@
 //
 // Dependências no pubspec.yaml:
 //   http: ^1.2.0
-//   flutter_secure_storage: ^9.0.0
+//   shared_preferences: ^2.2.0
+// (flutter_secure_storage foi removido: quebra o build Web/WASM.
+//  O token agora vai para TokenStorage, em lib/utils/token_storage.dart.)
 //
 // Fluxo:
 //   1. register() cria o cliente (sem token)
@@ -16,8 +18,8 @@
 // O Render gratuito pode demorar na primeira chamada (cold start).
 
 import 'dart:convert';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'utils/token_storage.dart';
 
 class ApiException implements Exception {
   final int statusCode;
@@ -128,20 +130,19 @@ class LogEntry {
 
 class CapiBankApi {
   static const String baseUrl = 'https://desafio-capi-bank.onrender.com';
-  static const _tokenKey = 'capi_bank_token';
 
   final http.Client _http;
-  final FlutterSecureStorage _storage;
+  final TokenStorage _storage;
 
-  CapiBankApi({http.Client? httpClient, FlutterSecureStorage? storage})
+  CapiBankApi({http.Client? httpClient, TokenStorage? storage})
       : _http = httpClient ?? http.Client(),
-        _storage = storage ?? const FlutterSecureStorage();
+        _storage = storage ?? TokenStorage();
 
   // ----- Token -----
 
-  Future<String?> getToken() => _storage.read(key: _tokenKey);
+  Future<String?> getToken() => _storage.readToken();
   Future<bool> get isLoggedIn async => await getToken() != null;
-  Future<void> logout() => _storage.delete(key: _tokenKey);
+  Future<void> logout() => _storage.deleteToken();
 
   Map<String, String> _headers(String? token, {bool json = false}) {
     final h = <String, String>{};
@@ -194,7 +195,7 @@ class CapiBankApi {
     if (res.statusCode != 200) _throwIfError(res);
     final body = _decode(res) as Map<String, dynamic>;
     final token = body['access_token'] as String;
-    await _storage.write(key: _tokenKey, value: token);
+    await _storage.saveToken(token);
     return token;
   }
 
