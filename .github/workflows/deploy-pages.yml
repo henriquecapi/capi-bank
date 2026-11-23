@@ -1,0 +1,59 @@
+name: Deploy Flutter Web to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter --version
+
+      # O projeto no repo só tem lib/ + pubspec.yaml, sem a pasta web/.
+      # Gera o scaffold web da versão do Flutter do runner,
+      # sem perder o código do app: salva lib/ e pubspec.yaml antes
+      # e restaura depois do create.
+      - name: Gerar scaffold web sem perder o app
+        run: |
+          cp -r lib /tmp/lib-backup
+          cp pubspec.yaml /tmp/pubspec-backup.yaml
+          flutter create . --platforms=web --project-name capi_bank --overwrite
+          rm -rf lib
+          cp -r /tmp/lib-backup lib
+          cp /tmp/pubspec-backup.yaml pubspec.yaml
+          flutter pub get
+
+      - name: Build web
+        run: flutter build web --release --base-href /
+
+      - name: Dominio customizado
+        run: echo "capbank.infocapibaribe.com" > build/web/CNAME
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
