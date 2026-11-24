@@ -83,11 +83,15 @@ class _SunCoinPainter extends CustomPainter {
 
 /// Nota de dolar com bracos e pernas, desenhada numa caixa 120x80.
 /// [phase] alterna as pernas (0 ou 1) para o efeito de corrida.
+/// [jump] 0 no chao, 1 no auge do pulo: no ar as pernas fecham
+/// e ficam paradas juntas; ao voltar ao chao, abrem de novo
+/// e a corrida continua.
 class _DollarBillPainter extends CustomPainter {
   final int phase; // 0 ou 1
   final double bob; // 0..1, altura do pulo
+  final double jump; // 0..1, quanto do pulo do toque
 
-  _DollarBillPainter({required this.phase, required this.bob});
+  _DollarBillPainter({required this.phase, required this.bob, this.jump = 0});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -113,7 +117,13 @@ class _DollarBillPainter extends CustomPainter {
       ..strokeCap = StrokeCap.square;
     final hipY = 58.0;
     final groundY = 76.0;
-    if (phase == 0) {
+    if (jump > 0.05) {
+      // No ar: pernas fechadas e paradas juntas, sem alternar.
+      canvas.drawLine(Offset(48, hipY), Offset(54, groundY - 6), legPaint);
+      canvas.drawLine(Offset(72, hipY), Offset(66, groundY - 6), legPaint);
+      canvas.drawRect(Rect.fromLTWH(48, groundY - 8, 10, 4), inkFill);
+      canvas.drawRect(Rect.fromLTWH(62, groundY - 8, 10, 4), inkFill);
+    } else if (phase == 0) {
       // Perna esquerda a frente, direita atras.
       canvas.drawLine(Offset(48, hipY), Offset(40, groundY), legPaint);
       canvas.drawLine(Offset(72, hipY), Offset(82, groundY - 4), legPaint);
@@ -159,7 +169,7 @@ class _DollarBillPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _DollarBillPainter old) =>
-      old.phase != phase || old.bob != bob;
+      old.phase != phase || old.bob != bob || old.jump != jump;
 }
 
 /// Fundo da cena: ceu loginSky, montanhas cinzas e chao preto pixelado.
@@ -280,7 +290,8 @@ class _CoinGameState extends State<CoinGame>
                 final phase = ((t * 12).floor()) % 2;
                 final bob = (math.sin(t * math.pi * 12)).abs() * 0.5;
                 // Pulo do toque: sobe e desce em 650 ms, ate 80 px.
-                final jumpY = math.sin(_jumpCtrl.value * math.pi) * 80;
+                final jumpProgress = math.sin(_jumpCtrl.value * math.pi);
+                final jumpY = jumpProgress * 80;
                 return Stack(
                   children: [
                     Positioned.fill(
@@ -311,7 +322,12 @@ class _CoinGameState extends State<CoinGame>
                         width: 120,
                         height: 80,
                         child: CustomPaint(
-                          painter: _DollarBillPainter(phase: phase, bob: bob),
+                          painter: _DollarBillPainter(
+                            phase: phase,
+                            // No ar o balanco da corrida para, as pernas ficam fechadas.
+                            bob: jumpProgress > 0.05 ? 0 : bob,
+                            jump: jumpProgress,
+                          ),
                         ),
                       ),
                     ),
