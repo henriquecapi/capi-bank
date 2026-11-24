@@ -5,9 +5,10 @@
 // da esquerda para a direita, estilo Mario side-scroller.
 // Base preto, branco e cinza. Animado com
 // AnimationController; ha tambem uma versao estatica para telas vazias.
-// Carregar (segurar e riscar): o sol vira moeda amarela e o
-// dinheirinho carrega junto, ficando verde — os dois com o mesmo
-// progresso, sem mostrar percentual.
+// Carregar (segurar e riscar): o sol enche de baixo para cima
+// como um copo d'agua, o dourado subindo ate virar moeda amarela,
+// e o dinheirinho carrega junto, ficando verde — os dois com o
+// mesmo progresso, sem mostrar percentual.
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -16,6 +17,7 @@ import '../theme/app_theme.dart';
 
 /// Sol estatico: circulo sem $ no meio, so com raios em volta.
 /// [gold] 0 = sol branco P&B, 1 = moedinha totalmente dourada/amarela.
+/// O dourado enche de baixo para cima, como um copo d'agua.
 class PixelSunCoin extends StatelessWidget {
   final double size;
   final double gold;
@@ -44,8 +46,11 @@ class _SunCoinPainter extends CustomPainter {
       ..color = outline
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
-    final fill = Paint()
-      ..color = Color.lerp(Colors.white, AppColors.gold, gold)!
+    final whiteFill = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    final goldFill = Paint()
+      ..color = AppColors.gold
       ..style = PaintingStyle.fill;
 
     // Raios: 12 tracinhos pixel ao redor do circulo.
@@ -68,7 +73,20 @@ class _SunCoinPainter extends CustomPainter {
       canvas.drawLine(p1, p2, ray);
     }
 
-    canvas.drawCircle(c, r, fill);
+    // Enche de baixo para cima como um copo d'agua: o dourado
+    // sobe de dentro do circulo, recortado pela borda dele.
+    // gold = 0: tudo branco. gold = 1: tudo dourado.
+    canvas.save();
+    canvas.clipPath(Path()..addOval(Rect.fromCircle(center: c, radius: r)));
+    canvas.drawCircle(c, r, whiteFill);
+    if (gold > 0) {
+      final fillHeight = 2 * r * gold;
+      canvas.drawRect(
+        Rect.fromLTWH(c.dx - r, c.dy + r - fillHeight, 2 * r, fillHeight),
+        goldFill,
+      );
+    }
+    canvas.restore();
     canvas.drawCircle(c, r, ink);
     canvas.drawCircle(c, r * 0.72, ink);
     // Sem $ no meio do sol — fica so o circulo limpo.
@@ -369,11 +387,13 @@ class _CoinGameState extends State<CoinGame>
                         ),
                       ),
                     ),
-                    // Sol no canto superior direito, sem $ no meio,
-                    // com tremidinha da Matrix e virando moeda dourada
-                    // conforme o quanto foi riscado.
+                    // Sol sem $ no meio, com tremidinha da Matrix
+                    // e virando moeda dourada conforme o quanto
+                    // foi riscado. Tela maior que 600: sol no
+                    // centro; tela menor: sol a direita, como antes.
                     Positioned(
-                      right: 16,
+                      left: width > 600 ? (width - 84) / 2 : null,
+                      right: width > 600 ? null : 16,
                       top: 4,
                       child: Transform.translate(
                         offset: Offset(glitchX, glitchY),
