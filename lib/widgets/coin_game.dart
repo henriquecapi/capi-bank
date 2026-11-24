@@ -276,7 +276,7 @@ class _CoinGameState extends State<CoinGame>
     if (!_scratching) return;
     // Cada ~600 px riscados revelam 100% da moedinha.
     setState(() {
-      _scratch = (_scratch + details.delta.distance / 600).clamp(0, 1);
+      _scratch = (_scratch + details.delta.distance / 600).clamp(0, 1).toDouble();
     });
   }
 
@@ -292,7 +292,7 @@ class _CoinGameState extends State<CoinGame>
     while (mounted && _scratch > 0 && !_scratching) {
       await Future.delayed(const Duration(milliseconds: 16));
       if (!mounted || _scratching) break;
-      setState(() => _scratch = (_scratch - 0.03).clamp(0, 1));
+      setState(() => _scratch = (_scratch - 0.03).clamp(0, 1).toDouble());
     }
     _fading = false;
   }
