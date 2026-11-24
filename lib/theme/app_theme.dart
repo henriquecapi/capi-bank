@@ -20,6 +20,9 @@ class AppColors {
   // Dourado so do efeito de riscar: sol vira moedinha dourada.
   static const Color gold = Color(0xFFFFC107);
   static const Color goldDark = Color(0xFFB8860B);
+  // Verde so do efeito de riscar: o dinheirinho carrega junto com o sol.
+  static const Color moneyGreen = Color(0xFF43A047);
+  static const Color moneyGreenDark = Color(0xFF2E7D32);
 }
 
 /// Medidas de layout do SemUmReal original.

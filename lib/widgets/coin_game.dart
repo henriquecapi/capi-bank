@@ -1,18 +1,21 @@
 // Arte do joguinho — Capi-Bank
 // Traducao em CustomPaint da arte do login do SemUmReal (login-game.jpg):
-// sol-moeda com $ e raios, montanhas cinzas, chao preto pixelado e,
+// sol sem $ no meio e com raios, montanhas cinzas, chao preto pixelado e,
 // embaixo, um dolarzinho (nota de dolar com bracos e pernas) correndo
 // da esquerda para a direita, estilo Mario side-scroller.
-// So preto, branco e cinza — nada de verde. Animado com
+// Base preto, branco e cinza. Animado com
 // AnimationController; ha tambem uma versao estatica para telas vazias.
+// Carregar (segurar e riscar): o sol vira moeda amarela e o
+// dinheirinho carrega junto, ficando verde — os dois com o mesmo
+// progresso, sem mostrar percentual.
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
-/// Sol-moeda estatico: circulo com $ no meio e raios em volta.
-/// [gold] 0 = sol branco P&B, 1 = moedinha totalmente dourada.
+/// Sol estatico: circulo sem $ no meio, so com raios em volta.
+/// [gold] 0 = sol branco P&B, 1 = moedinha totalmente dourada/amarela.
 class PixelSunCoin extends StatelessWidget {
   final double size;
   final double gold;
@@ -68,21 +71,7 @@ class _SunCoinPainter extends CustomPainter {
     canvas.drawCircle(c, r, fill);
     canvas.drawCircle(c, r, ink);
     canvas.drawCircle(c, r * 0.72, ink);
-
-    final tp = TextPainter(
-      text: TextSpan(
-        text: '\$',
-        style: GoogleFonts.pressStart2p(
-          fontSize: r * 0.85,
-          color: AppColors.ink,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(
-      canvas,
-      Offset(c.dx - tp.width / 2, c.dy - tp.height / 2),
-    );
+    // Sem $ no meio do sol — fica so o circulo limpo.
   }
 
   @override
@@ -94,12 +83,17 @@ class _SunCoinPainter extends CustomPainter {
 /// [jump] 0 no chao, 1 no auge do pulo: no ar as pernas fecham
 /// e ficam paradas juntas; ao voltar ao chao, abrem de novo
 /// e a corrida continua.
+/// [green] 0 = nota branca P&B, 1 = nota totalmente verde.
+/// Carrega junto com o sol (mesmo progresso do riscar):
+/// sol vira moeda amarela, dinheiro vira verde.
 class _DollarBillPainter extends CustomPainter {
   final int phase; // 0 ou 1
   final double bob; // 0..1, altura do pulo
   final double jump; // 0..1, quanto do pulo do toque
+  final double green; // 0..1, quanto o dinheiro ja carregou
 
-  _DollarBillPainter({required this.phase, required this.bob, this.jump = 0});
+  _DollarBillPainter(
+      {required this.phase, required this.bob, this.jump = 0, this.green = 0});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -111,8 +105,9 @@ class _DollarBillPainter extends CustomPainter {
     final inkFill = Paint()
       ..color = AppColors.ink
       ..style = PaintingStyle.fill;
-    final whiteFill = Paint()
-      ..color = Colors.white
+    // A nota carrega em verde junto com o sol: 0 = branca, 1 = verde.
+    final billFill = Paint()
+      ..color = Color.lerp(Colors.white, AppColors.moneyGreen, green)!
       ..style = PaintingStyle.fill;
 
     // Pulo: o corpo inteiro sobe alguns pixels no meio do passo.
@@ -150,7 +145,7 @@ class _DollarBillPainter extends CustomPainter {
 
     // --- Corpo: a nota ---
     const bill = Rect.fromLTWH(10, 18, 100, 40);
-    canvas.drawRect(bill, whiteFill);
+    canvas.drawRect(bill, billFill);
     canvas.drawRect(bill, ink);
     canvas.drawRect(const Rect.fromLTWH(16, 24, 88, 28), ink);
 
@@ -170,14 +165,17 @@ class _DollarBillPainter extends CustomPainter {
     };
     dollar(12, const Offset(22, 30));
     dollar(12, const Offset(88, 30));
-    canvas.drawCircle(const Offset(60, 38), 11, whiteFill);
+    canvas.drawCircle(const Offset(60, 38), 11, billFill);
     canvas.drawCircle(const Offset(60, 38), 11, ink);
     dollar(11, const Offset(55, 32));
   }
 
   @override
   bool shouldRepaint(covariant _DollarBillPainter old) =>
-      old.phase != phase || old.bob != bob || old.jump != jump;
+      old.phase != phase ||
+      old.bob != bob ||
+      old.jump != jump ||
+      old.green != green;
 }
 
 /// Fundo da cena: ceu loginSky, montanhas cinzas e chao preto pixelado.
@@ -235,12 +233,14 @@ class _GameScenePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
-/// Arte animada do login: sol-moeda em cima, dolarzinho correndo
+/// Arte animada do login: sol em cima, dolarzinho correndo
 /// da esquerda para a direita sobre o chao, estilo Mario.
 /// Interativa: toque rapido na area faz o dinheirinho pular.
 /// Segurar e riscar a area toda (dedo no celular, mouse no
-/// computador) vai revelando a moedinha dourada no lugar do sol,
-/// ate 100%; ao soltar, ela some suavemente. O sol tambem tem
+/// computador) vai revelando a moedinha dourada no lugar do sol
+/// e deixando o dinheirinho verde, os dois com o mesmo progresso;
+/// ao soltar, os dois voltam suavemente ao P&B. Sem percentual
+/// na tela — o carregamento se ve so pela cor. O sol tambem tem
 /// uma tremidinha de falha da Matrix de tempos em tempos.
 /// Nao e video — e animacao desenhada em CustomPaint, por isso
 /// responde ao toque.
@@ -369,8 +369,8 @@ class _CoinGameState extends State<CoinGame>
                         ),
                       ),
                     ),
-                    // Sol-moeda no canto superior direito, com
-                    // tremidinha da Matrix e virando moeda dourada
+                    // Sol no canto superior direito, sem $ no meio,
+                    // com tremidinha da Matrix e virando moeda dourada
                     // conforme o quanto foi riscado.
                     Positioned(
                       right: 16,
@@ -380,19 +380,6 @@ class _CoinGameState extends State<CoinGame>
                         child: PixelSunCoin(size: 84, gold: _scratch),
                       ),
                     ),
-                    // Porcentagem da moedinha, so enquanto risca.
-                    if (_scratch > 0)
-                      Positioned(
-                        right: 16,
-                        top: 92,
-                        child: Text(
-                          '${(_scratch * 100).round()}%',
-                          style: GoogleFonts.pressStart2p(
-                            fontSize: 10,
-                            color: AppColors.goldDark,
-                          ),
-                        ),
-                      ),
                     Positioned(
                       left: x,
                       bottom: 10 + jumpY,
@@ -405,6 +392,8 @@ class _CoinGameState extends State<CoinGame>
                             // No ar o balanco da corrida para, as pernas ficam fechadas.
                             bob: jumpProgress > 0.05 ? 0 : bob,
                             jump: jumpProgress,
+                            // Dinheiro carrega em verde junto com o sol.
+                            green: _scratch,
                           ),
                         ),
                       ),
