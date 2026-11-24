@@ -1,6 +1,7 @@
 // Arte do joguinho — Capi-Bank
 // Traducao em CustomPaint da arte do login do SemUmReal (login-game.jpg):
-// sol sem $ no meio e com raios, montanhas cinzas, chao preto pixelado e,
+// sol sem $ no meio (o $ so aparece quando ele vira moeda)
+// e com raios, montanhas cinzas, chao preto pixelado e,
 // embaixo, um dolarzinho (nota de dolar com bracos e pernas) correndo
 // da esquerda para a direita, estilo Mario side-scroller.
 // Base preto, branco e cinza. Animado com
@@ -15,8 +16,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
-/// Sol estatico: circulo sem $ no meio, so com raios em volta.
-/// [gold] 0 = sol branco P&B, 1 = moedinha totalmente dourada/amarela.
+/// Sol estatico: circulo sem $ no meio enquanto e sol, so com
+/// raios em volta. [gold] 0 = sol branco P&B sem $, 1 = moedinha
+/// totalmente dourada/amarela com $.
 /// O dourado enche de baixo para cima, como um copo d'agua.
 class PixelSunCoin extends StatelessWidget {
   final double size;
@@ -89,7 +91,24 @@ class _SunCoinPainter extends CustomPainter {
     canvas.restore();
     canvas.drawCircle(c, r, ink);
     canvas.drawCircle(c, r * 0.72, ink);
-    // Sem $ no meio do sol — fica so o circulo limpo.
+    // $ so quando vira moeda: enquanto e sol nao tem nada;
+    // conforme o dourado sobe, o $ vai aparecendo junto.
+    if (gold > 0) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: '\$',
+          style: GoogleFonts.pressStart2p(
+            fontSize: r * 0.85,
+            color: AppColors.ink.withOpacity(gold),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(
+        canvas,
+        Offset(c.dx - tp.width / 2, c.dy - tp.height / 2),
+      );
+    }
   }
 
   @override
@@ -387,13 +406,13 @@ class _CoinGameState extends State<CoinGame>
                         ),
                       ),
                     ),
-                    // Sol sem $ no meio, com tremidinha da Matrix
+                    // Sol sem $ enquanto e sol, com tremidinha da Matrix
                     // e virando moeda dourada conforme o quanto
-                    // foi riscado. Tela maior que 600: sol no
+                    // foi riscado. Tela maior que 601: sol no
                     // centro; tela menor: sol a direita, como antes.
                     Positioned(
-                      left: width > 600 ? (width - 84) / 2 : null,
-                      right: width > 600 ? null : 16,
+                      left: width > 601 ? (width - 84) / 2 : null,
+                      right: width > 601 ? null : 16,
                       top: 4,
                       child: Transform.translate(
                         offset: Offset(glitchX, glitchY),
