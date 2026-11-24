@@ -12,38 +12,46 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
 /// Sol-moeda estatico: circulo com $ no meio e raios em volta.
+/// [gold] 0 = sol branco P&B, 1 = moedinha totalmente dourada.
 class PixelSunCoin extends StatelessWidget {
   final double size;
-  const PixelSunCoin({super.key, this.size = 96});
+  final double gold;
+  const PixelSunCoin({super.key, this.size = 96, this.gold = 0});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(painter: _SunCoinPainter()),
+      child: CustomPaint(painter: _SunCoinPainter(gold: gold)),
     );
   }
 }
 
 class _SunCoinPainter extends CustomPainter {
+  final double gold; // 0..1
+  _SunCoinPainter({this.gold = 0});
+
   @override
   void paint(Canvas canvas, Size size) {
     final c = Offset(size.width / 2, size.height / 2);
     final r = size.width * 0.32;
+    final outline = Color.lerp(AppColors.ink, AppColors.goldDark, gold)!;
     final ink = Paint()
-      ..color = AppColors.ink
+      ..color = outline
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
     final fill = Paint()
-      ..color = Colors.white
+      ..color = Color.lerp(Colors.white, AppColors.gold, gold)!
       ..style = PaintingStyle.fill;
 
     // Raios: 12 tracinhos pixel ao redor do circulo.
+    // Virando moeda, os raios encolhem ate quase sumir.
     final ray = Paint()
-      ..color = AppColors.ink
+      ..color = outline
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.square;
+    final rayLen = 16 - 10 * gold;
     for (var i = 0; i < 12; i++) {
       final a = i * math.pi / 6;
       final p1 = Offset(
@@ -51,8 +59,8 @@ class _SunCoinPainter extends CustomPainter {
         c.dy + math.sin(a) * (r + 6),
       );
       final p2 = Offset(
-        c.dx + math.cos(a) * (r + 16),
-        c.dy + math.sin(a) * (r + 16),
+        c.dx + math.cos(a) * (r + 6 + rayLen),
+        c.dy + math.sin(a) * (r + 6 + rayLen),
       );
       canvas.drawLine(p1, p2, ray);
     }
@@ -78,7 +86,7 @@ class _SunCoinPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
+  bool shouldRepaint(covariant _SunCoinPainter old) => old.gold != gold;
 }
 
 /// Nota de dolar com bracos e pernas, desenhada numa caixa 120x80.
@@ -229,7 +237,11 @@ class _GameScenePainter extends CustomPainter {
 
 /// Arte animada do login: sol-moeda em cima, dolarzinho correndo
 /// da esquerda para a direita sobre o chao, estilo Mario.
-/// Interativa: tocar na area do jogo faz o dinheirinho pular.
+/// Interativa: toque rapido na area faz o dinheirinho pular.
+/// Segurar e riscar a area toda (dedo no celular, mouse no
+/// computador) vai revelando a moedinha dourada no lugar do sol,
+/// ate 100%; ao soltar, ela some suavemente. O sol tambem tem
+/// uma tremidinha de falha da Matrix de tempos em tempos.
 /// Nao e video — e animacao desenhada em CustomPaint, por isso
 /// responde ao toque.
 class CoinGame extends StatefulWidget {
@@ -245,9 +257,44 @@ class _CoinGameState extends State<CoinGame>
   late final AnimationController _ctrl;
   late final AnimationController _jumpCtrl;
 
+  // Riscar: 0 = sol normal, 1 = moedinha 100% dourada.
+  double _scratch = 0;
+  bool _scratching = false;
+  bool _fading = false;
+
   void _jump() {
     if (_jumpCtrl.isAnimating) return;
     _jumpCtrl.forward(from: 0);
+  }
+
+  void _onPanStart(DragStartDetails details) {
+    _scratching = true;
+    _fading = false;
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    if (!_scratching) return;
+    // Cada ~600 px riscados revelam 100% da moedinha.
+    setState(() {
+      _scratch = (_scratch + details.delta.distance / 600).clamp(0, 1);
+    });
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    _scratching = false;
+    _fadeScratch();
+  }
+
+  Future<void> _fadeScratch() async {
+    if (_fading) return;
+    _fading = true;
+    // Some suavemente em ~600 ms ao soltar o dedo/mouse.
+    while (mounted && _scratch > 0 && !_scratching) {
+      await Future.delayed(const Duration(milliseconds: 16));
+      if (!mounted || _scratching) break;
+      setState(() => _scratch = (_scratch - 0.03).clamp(0, 1));
+    }
+    _fading = false;
   }
 
   @override
@@ -274,6 +321,13 @@ class _CoinGameState extends State<CoinGame>
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: _jump,
+      onPanStart: _onPanStart,
+      onPanUpdate: _onPanUpdate,
+      onPanEnd: _onPanEnd,
+      onPanCancel: () {
+        _scratching = false;
+        _fadeScratch();
+      },
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
         height: widget.height,
@@ -292,6 +346,12 @@ class _CoinGameState extends State<CoinGame>
                 // Pulo do toque: sobe e desce em 650 ms, ate 80 px.
                 final jumpProgress = math.sin(_jumpCtrl.value * math.pi);
                 final jumpY = jumpProgress * 80;
+                // Falha da Matrix no sol: a cada ~2,5 s ele treme
+                // rapido por 0,3 s e volta ao normal.
+                final seconds = t * 6;
+                final inGlitch = (seconds % 2.5) < 0.3 ? 1.0 : 0.0;
+                final glitchX = inGlitch * math.sin(seconds * 80) * 2.5;
+                final glitchY = inGlitch * math.cos(seconds * 63) * 2;
                 return Stack(
                   children: [
                     Positioned.fill(
@@ -302,19 +362,37 @@ class _CoinGameState extends State<CoinGame>
                       left: 16,
                       top: 8,
                       child: Text(
-                        'TOQUE PARA PULAR',
+                        'TOQUE PULA • RISQUE P/ DOURAR',
                         style: GoogleFonts.pressStart2p(
-                          fontSize: 9,
+                          fontSize: 8,
                           color: AppColors.ink,
                         ),
                       ),
                     ),
-                    // Sol-moeda no canto superior direito.
-                    const Positioned(
+                    // Sol-moeda no canto superior direito, com
+                    // tremidinha da Matrix e virando moeda dourada
+                    // conforme o quanto foi riscado.
+                    Positioned(
                       right: 16,
                       top: 4,
-                      child: PixelSunCoin(size: 84),
+                      child: Transform.translate(
+                        offset: Offset(glitchX, glitchY),
+                        child: PixelSunCoin(size: 84, gold: _scratch),
+                      ),
                     ),
+                    // Porcentagem da moedinha, so enquanto risca.
+                    if (_scratch > 0)
+                      Positioned(
+                        right: 16,
+                        top: 92,
+                        child: Text(
+                          '${(_scratch * 100).round()}%',
+                          style: GoogleFonts.pressStart2p(
+                            fontSize: 10,
+                            color: AppColors.goldDark,
+                          ),
+                        ),
+                      ),
                     Positioned(
                       left: x,
                       bottom: 10 + jumpY,

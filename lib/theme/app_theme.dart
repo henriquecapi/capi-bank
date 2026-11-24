@@ -17,6 +17,9 @@ class AppColors {
   static const Color line = Color(0xFF111111);
   static const Color error = Color(0xFFB00020);
   static const Color loginSky = Color(0xFFE3E3E3); // ceu da arte do login
+  // Dourado so do efeito de riscar: sol vira moedinha dourada.
+  static const Color gold = Color(0xFFFFC107);
+  static const Color goldDark = Color(0xFFB8860B);
 }
 
 /// Medidas de layout do SemUmReal original.
