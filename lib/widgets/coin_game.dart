@@ -219,6 +219,9 @@ class _GameScenePainter extends CustomPainter {
 
 /// Arte animada do login: sol-moeda em cima, dolarzinho correndo
 /// da esquerda para a direita sobre o chao, estilo Mario.
+/// Interativa: tocar na area do jogo faz o dinheirinho pular.
+/// Nao e video — e animacao desenhada em CustomPaint, por isso
+/// responde ao toque.
 class CoinGame extends StatefulWidget {
   final double height;
   const CoinGame({super.key, this.height = 210});
@@ -230,6 +233,12 @@ class CoinGame extends StatefulWidget {
 class _CoinGameState extends State<CoinGame>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
+  late final AnimationController _jumpCtrl;
+
+  void _jump() {
+    if (_jumpCtrl.isAnimating) return;
+    _jumpCtrl.forward(from: 0);
+  }
 
   @override
   void initState() {
@@ -238,57 +247,80 @@ class _CoinGameState extends State<CoinGame>
       vsync: this,
       duration: const Duration(seconds: 6),
     )..repeat();
+    _jumpCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    _jumpCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: widget.height,
-      width: double.infinity,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          return AnimatedBuilder(
-            animation: _ctrl,
-            builder: (context, _) {
-              final t = _ctrl.value;
-              // Da esquerda (fora da tela) ate a direita (fora da tela).
-              final x = -90 + t * (width + 180);
-              final phase = ((t * 12).floor()) % 2;
-              final bob = (math.sin(t * math.pi * 12)).abs() * 0.5;
-              return Stack(
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(painter: _GameScenePainter()),
-                  ),
-                  // Sol-moeda no canto superior direito.
-                  const Positioned(
-                    right: 16,
-                    top: 4,
-                    child: PixelSunCoin(size: 84),
-                  ),
-                  Positioned(
-                    left: x,
-                    bottom: 10,
-                    child: SizedBox(
-                      width: 120,
-                      height: 80,
-                      child: CustomPaint(
-                        painter: _DollarBillPainter(phase: phase, bob: bob),
+    return GestureDetector(
+      onTap: _jump,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        height: widget.height,
+        width: double.infinity,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            return AnimatedBuilder(
+              animation: Listenable.merge([_ctrl, _jumpCtrl]),
+              builder: (context, _) {
+                final t = _ctrl.value;
+                // Da esquerda (fora da tela) ate a direita (fora da tela).
+                final x = -90 + t * (width + 180);
+                final phase = ((t * 12).floor()) % 2;
+                final bob = (math.sin(t * math.pi * 12)).abs() * 0.5;
+                // Pulo do toque: sobe e desce em 650 ms, ate 80 px.
+                final jumpY = math.sin(_jumpCtrl.value * math.pi) * 80;
+                return Stack(
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(painter: _GameScenePainter()),
+                    ),
+                    // Dica do toque, em cima a esquerda.
+                    Positioned(
+                      left: 16,
+                      top: 8,
+                      child: Text(
+                        'TOQUE PARA PULAR',
+                        style: GoogleFonts.pressStart2p(
+                          fontSize: 9,
+                          color: AppColors.ink,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
+                    // Sol-moeda no canto superior direito.
+                    const Positioned(
+                      right: 16,
+                      top: 4,
+                      child: PixelSunCoin(size: 84),
+                    ),
+                    Positioned(
+                      left: x,
+                      bottom: 10 + jumpY,
+                      child: SizedBox(
+                        width: 120,
+                        height: 80,
+                        child: CustomPaint(
+                          painter: _DollarBillPainter(phase: phase, bob: bob),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
